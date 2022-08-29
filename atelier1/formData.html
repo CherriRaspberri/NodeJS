@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atelier 1</title>
+</head>
+<style>
+    input {
+        padding: 10px 30px;
+        background-color: lightgray;
+        border: none;
+        outline: none;
+        margin: 5px;
+        border-radius: 40px;
+    }
+    input:last-child {
+        transition: 0.3s;
+        background-color: aquamarine;
+        
+    }
+    input:last-child:hover {
+        cursor: pointer;
+        transition: 0.3s;
+        background-color: rgb(110, 222, 185);
+    }
+</style>
+<body>
+    <div style="text-align: center; background-color: gray; padding: 20px; margin: 10px; border-radius: 10px;">
+        <form action="http://localhost:5000/api/contacts" method="POST">
+            <input type="text" placeholder="First name..." name="FirstName" required>
+            <br>
+            <input type="text" placeholder="Last name..." name="LastName" required>
+            <br>
+            <input type="email" placeholder="Email..." name="Email" required>
+            <br>
+            <input type="Submit" value="Submit">
+        </form>
+    </div>
+</body>
+</html>
