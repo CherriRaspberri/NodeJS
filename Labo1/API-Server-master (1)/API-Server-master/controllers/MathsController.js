@@ -15,11 +15,4 @@ module.exports =
             else 
                 this.HttpContext.response.notImplemented();
         }
-
-        post (data) {
-
-        }
-        put (data) {
-
-        }
     }

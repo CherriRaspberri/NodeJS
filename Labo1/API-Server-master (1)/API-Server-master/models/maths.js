@@ -1,13 +1,15 @@
 const Model = require('./model');
 module.exports = 
     class Maths extends Model {
-        constructor(x, y) {
+        constructor(op, x, y) {
             super();
+            this.Op = op !== undefined ? op : "";
             this.X = x !== undefined ? x : "";
             this.Y = y !== undefined ? y : "";
 
-            this.setKey("X");
-            this.addValidator('X', '');
-            this.addValidator('Y', '');
+            this.setKey("Op");
+            this.addValidator('Op', 'char')
+            this.addValidator('X', 'integer');
+            this.addValidator('Y', 'integer');
         }
     }
