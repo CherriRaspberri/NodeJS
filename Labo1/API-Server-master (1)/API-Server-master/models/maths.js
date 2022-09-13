@@ -8,7 +8,7 @@ module.exports =
             this.Y = y !== undefined ? y : "";
 
             this.setKey("Op");
-            this.addValidator('Op', 'char')
+            this.addValidator('Op', 'char');
             this.addValidator('X', 'integer');
             this.addValidator('Y', 'integer');
         }
