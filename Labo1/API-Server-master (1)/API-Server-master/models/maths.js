@@ -6,7 +6,7 @@ module.exports =
             this.X = x !== undefined ? x : "";
             this.Y = y !== undefined ? y : "";
 
-            this.setKey();
+            this.setKey("X");
             this.addValidator('X', '');
             this.addValidator('Y', '');
         }
