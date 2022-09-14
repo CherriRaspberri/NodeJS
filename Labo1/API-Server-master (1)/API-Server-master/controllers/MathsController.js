@@ -82,6 +82,6 @@ module.exports =
         }
 
         help() {
-            this.HttpContext.response.HTML();
+            this.HttpContext.response.HTML(require('../wwwroot/404'));
         }
     }
