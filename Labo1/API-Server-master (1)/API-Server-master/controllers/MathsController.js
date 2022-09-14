@@ -44,7 +44,7 @@ module.exports =
         operate(x, y, op) {
             let result = 0;
             switch (op) {
-                case '+':
+                case ' ':
                     result = x + y;
                     break;
                 case '-':
@@ -73,7 +73,6 @@ module.exports =
         }
 
         get() {
-
             if (this.params != null) {
                 this.HttpContext.response.JSON(this.params);
             }
