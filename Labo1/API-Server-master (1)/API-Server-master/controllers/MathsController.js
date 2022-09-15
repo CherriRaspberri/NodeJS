@@ -1,5 +1,7 @@
 const path = require('path');
 const fs = require('fs');
+const { Console } = require('console');
+let hasError = false;
 
 module.exports =
     class MathsController extends require('./Controller') {
@@ -37,7 +39,7 @@ module.exports =
 
         checkParamCount(nbParams) {
             if (Object.keys(this.params).length > nbParams) {
-                return this.error("too many parameters");
+                return false;
             }
             return true;
         }
@@ -78,6 +80,7 @@ module.exports =
 
         //treats the errors and sends response
         get() {
+            hasError = false;
             //redirects to help page
             if (this.HttpContext.path.queryString == '?') {
                 //fetches the html document
@@ -97,60 +100,100 @@ module.exports =
                     }
                     //checks what symbol param op uses; will determine if x/y or n is needed
                     if (this.params.op == '+' || this.params.op == '-' || this.params.op == '*' || this.params.op == '/' || this.params.op == '%') {
-                        //checks if param x exists
-                        if (this.params.x != undefined) {
-                            //checks if param x is a number
-                            if (!isNaN(this.params.x)) {
-                                //checks if param y exists
-                                if (this.params.y != undefined) {
-                                    //checks if param y is a number
-                                    if (!isNaN(this.params.y)) {
-                                        //sends response
-                                        this.params.value = this.operate(this.params.x, this.params.y, null, this.params.op);
-                                        this.HttpContext.response.JSON(this.params);
-                                    }
-                                    //if param y NaN sends error
-                                    else {
-                                        this.params.error = "Parameter 'y' is not a number";
-                                        this.HttpContext.response.JSON(this.params);
-                                    }
-                                }
-                                //if param y missing sends error
-                                else {
-                                    this.params.error = "Parameter 'y' missing";
+                        //checks parameter count
+                        if (this.checkParamCount(3)) {
+                            /*
+                            //checks specifically if param op is a /
+                            if (this.params.op == '/') {
+                                //checks if param x or y is 0; if yes, send error
+                                if (this.params.x == 0 || this.params.y == 0) {
+                                    hasError = true;
+                                    this.params.error = "Values cannot be 0 with parameter /";
                                     this.HttpContext.response.JSON(this.params);
                                 }
                             }
-                            //if param x NaN sends error
-                            else {
-                                this.params.error = "Parameter 'x' is not a number";
-                                this.HttpContext.response.JSON(this.params);
+                            //checks specifically if param op is a %
+                            if (this.params.op == '%') {
+                                //checks if param x or y is 0; if yes, send error
+                                if (this.params.x == 0 || this.params.y == 0) {
+                                    hasError = true;
+                                    this.params.error = "Values cannot be 0 with parameter %";
+                                    this.HttpContext.response.JSON(this.params);
+                                }
+                            }
+                            */
+
+                            if (!hasError) {
+                                //checks if param x exists
+                                if (this.params.x != undefined) {
+                                    //checks if param x is a number
+                                    if (!isNaN(this.params.x)) {
+                                        //checks if param y exists
+                                        if (this.params.y != undefined) {
+                                            //checks if param y is a number
+                                            if (!isNaN(this.params.y)) {
+                                                //sends response
+                                                this.params.value = this.operate(this.params.x, this.params.y, null, this.params.op);
+                                                this.HttpContext.response.JSON(this.params);
+                                            }
+                                            //if param y NaN sends error
+                                            else {
+                                                this.params.error = "Parameter 'y' is not a number";
+                                                this.HttpContext.response.JSON(this.params);
+                                            }
+                                        }
+                                        //if param y missing sends error
+                                        else {
+                                            this.params.error = "Parameter 'y' missing";
+                                            this.HttpContext.response.JSON(this.params);
+                                        }
+                                    }
+                                    //if param x NaN sends error
+                                    else {
+                                        this.params.error = "Parameter 'x' is not a number";
+                                        this.HttpContext.response.JSON(this.params);
+                                    }
+                                }
+                                //if param x missing sends error
+                                else {
+                                    this.params.error = "Parameter 'x' missing";
+                                    this.HttpContext.response.JSON(this.params);
+                                }
                             }
                         }
-                        //if param x missing sends error
+                        //if param number more than 3, send error
                         else {
-                            this.params.error = "Parameter 'x' missing";
+                            this.params.error = "Too many parameters";
                             this.HttpContext.response.JSON(this.params);
                         }
+
                     }
                     else if (this.params.op == '!' || this.params.op == 'p' || this.params.op == 'np') {
-                        //checks if param n exists
-                        if (this.params.n != undefined) {
-                            //checks if param n is a number
-                            if (!isNaN(this.params.n)) {
-                                //sends response
-                                this.params.value = this.operate(null, null, this.params.n, this.params.op);
-                                this.HttpContext.response.JSON(this.params);
+                        //checks param count
+                        if (this.checkParamCount(2)) {
+                            //checks if param n exists
+                            if (this.params.n != undefined) {
+                                //checks if param n is a number
+                                if (!isNaN(this.params.n)) {
+                                    //sends response
+                                    this.params.value = this.operate(null, null, this.params.n, this.params.op);
+                                    this.HttpContext.response.JSON(this.params);
+                                }
+                                //if param n NaN sends error
+                                else {
+                                    this.params.error = "Parameter 'n' is not a number";
+                                    this.HttpContext.response.JSON(this.params);
+                                }
                             }
-                            //if param n NaN sends error
+                            //if param n missing, sends error
                             else {
-                                this.params.error = "Parameter 'n' is not a number";
+                                this.params.error = "Parameter 'n' missing";
                                 this.HttpContext.response.JSON(this.params);
                             }
                         }
-                        //if param n missing, sends error
+                        //if nb of param more than 2, send error
                         else {
-                            this.params.error = "Parameter 'n' missing";
+                            this.params.error = "Too many parameters";
                             this.HttpContext.response.JSON(this.params);
                         }
                     }
