@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const { Console } = require('console');
 let hasError = false;
 
 module.exports =
