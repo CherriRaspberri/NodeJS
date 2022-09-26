@@ -122,12 +122,94 @@ class Repository {
         return false;
     }
     getAll(params = null) {
+        //useful functions
+        function compareNum(x, y) {
+            if (x === y) return 0;
+            else if (x < y) return -1;
+            return 1;
+        }
+
+        function innerCompare(x, y) {
+            if ((typeof x) === 'string')
+                return x.localeCompare(y);
+            else
+                return this.compareNum(x, y);
+        }
+        
+        function compare(itemX, itemY) {
+            let fieldIndex = 0;
+            let max = this.sortFields.length;
+            do {
+                let result = 0;
+                if (this.sortFields[fieldIndex].ascending)
+                    result = this.innerCompare(itemX[this.sortFields[fieldIndex].name], itemY[this.sortFields[fieldIndex].name]);
+                else
+                    result = this.innerCompare(itemY[this.sortFields[fieldIndex].name], itemX[this.sortFields[fieldIndex].name]);
+                if (result == 0)
+                    fieldIndex++;
+                else
+                    return result;
+            } while (fieldIndex < max);
+            return 0;
+        }
+
+        //fetches objects from json file
         let objectsList = this.objects();
+
+        //?        
         if (this.bindExtraDataMethod != null) {
             objectsList = this.bindExtraData(objectsList);
         }
+
+        //checks if params exist
         if (params) {
-            // TODO Laboratoire 2
+            //model
+            let model = this.model;
+            //output
+            let filteredAndSortedObjects = [];
+
+            //
+            let sortKeys = [];
+            let searchKeys = [];
+
+            //for every param, check if param name = sort
+            //if yes, puts every sort key in sortKeys and checks if desc or asc
+            Object.keys(params).forEach(function (paramName) {
+                if (paramName == "sort") {
+                    let keyValues = params[paramName];
+                    if (Array.isArray(keyValues)) {
+                        for (let key of keyValues) {
+                            let values = key.split(',');
+                            let descendant = (values.length > 1) && (values[1] == "desc");
+                            sortKeys.push({ key: values[0], asc: !descendant });
+                        }
+                    } else {
+                        let value = keyValues.split(',');
+                        let descendant = (value.length > 1) && (value[1] == "desc");
+                        sortKeys.push({ key: value[0], asc: !descendant });
+                    }
+                } else {
+                    // todo add search key
+                    if (paramName in model)
+                        searchKeys.push({key: paramName, value: params[paramName]});
+                }
+            });
+            // todo filter
+
+            //TODO sort
+            Object.keys(sortKeys).forEach(function (sortName) {
+                if (sortName == 'Name') {
+                    for (let i = 0; i < objectsList.length - 1; i++) {
+                        for (let j = 0; j < objectsList.length; j++) {
+                            compare(objectsList[i], objectsList[j]);
+                        }
+                    }
+                }
+                if (sortName == 'Category') {
+
+                }
+            });
+            return filteredAndSortedObjects;
         }
         return objectsList;
     }
