@@ -195,15 +195,17 @@ class Repository {
                 }
             });
             // todo filter
+            Object.keys(searchKeys).forEach(function (key) {
+                if (key == 'Id') {
+
+                }
+                
+            });
 
             //TODO sort
             Object.keys(sortKeys).forEach(function (sortName) {
                 if (sortName == 'Name') {
-                    for (let i = 0; i < objectsList.length - 1; i++) {
-                        for (let j = 0; j < objectsList.length; j++) {
-                            compare(objectsList[i], objectsList[j]);
-                        }
-                    }
+                    
                 }
                 if (sortName == 'Category') {
 
