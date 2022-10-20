@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--Head-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!--Links : Bootstrap; Cloudflare; Ajax; CSS sheet; Favicon; -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+    <link rel="stylesheet" href="css/site.css">
+    <link rel="icon" href="favicon.ico">
+
+    <title>News Manager</title>
+</head>
+
+<!--Body-->
+
+<body>
+    <div class="mainContainer">
+        <!--Header-->
+        <div class="headerPanel">
+            <div class="headerLayout">
+                <!--Credentials-->
+                <img src="favicon.ico" alt="" data-toggle="tooltip"
+                    title="Gestionnaire de Nouvelles - Auteur : Nicolas Chourot - Éditeurs : Olivier Laliberté / Guillaume Légaré - Collège Lionel-Groulx">
+
+                <!--Title-->
+                <span class="header">Gestionnaire de Nouvelles</span>
+
+                <!--Icons : Add; Search; -->
+                <span class="cmd fa fa-plus-square" id="newNewsCmd" title="Ajouter une Nouvelle"
+                    data-toggle="tooltip"></span>
+                <span class="cmd fa fa-search" title="Afficher/masquer la barre de recherche"
+                    data-toggle="tooltip"></span>
+            </div>
+
+            <!--Search bar-->
+            <div id="searchBar">
+                <div class="searchBarLayout">
+                    <select id="searchCategory" class="form-control">
+                        <!-- filled programmatically-->
+                    </select>
+                    <span>
+                        <!-- skip a column -->
+                    </span>
+                    <input type="search" id="searchTitle" class="form-control" placeholder="Recherche de Nouvelles" />
+                    <span>
+                        <!-- skip a column -->
+                    </span>
+                    <span class="cmd fa fa-refresh"></span>
+                </div>
+            </div>
+        </div>
+
+        <!--Where the news list is displayed-->
+        <div class="scrollContainer">
+            <div id="newsList">
+                <!-- filled programmatically-->
+            </div>
+        </div>
+
+        <!-- Dialogs containers-->
+        <div>
+            <div id="newsDlg">
+                <form id="newsForm">
+                    <input type="hidden" id="Id_input" value="0">
+
+                    <!--Title-->
+                    <label for="title_input">Titre</label>
+                    <input type="text" id="title_input" class="form-control" required invalidMessage="Obligatoire">
+
+                    <!--Category-->
+                    <label for="category_input">Catégorie</label>
+                    <input type="text" id="category_input" class="form-control" required invalidMessage="Obligatoire">
+
+                    <!--Texte-->
+                    <label for="text_input">Texte</label>
+                    <input type="text" id="text_input" class="form-control" required invalidMessage="Obligatoire">
+
+                    <!--Image url-->
+                    <label for="url_input">Hyperlien vers l'image</label>
+                    <input type="url" id="url_input" class="form-control URL" required invalidMessage="Lien invalide">
+
+                    <!--Date-->
+                    <input type="hidden" id="date_input" value="0" required invalidMessage="Date invalide">
+                </form>
+            </div>
+            <div id="confirmDeleteDlg">
+                <span id="confirmationMessage"></span>
+            </div>
+            <div id="errorDlg">
+                <span id="errorMessage"></span>
+            </div>
+        </div>
+    </div>
+
+    <!--JAVASCRIPT-->
+
+    <!--External links-->
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.maskedinput/1.4.1/jquery.maskedinput.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="js/customValidation.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/date.js"></script>
+
+    <!--Main-->
+    <script defer>
+        //Variables
+        const periodicRefreshPeriod = 10;
+        let holdCheckETag = false;
+        let currentETag = "";
+        let createMode = true;
+        let searchCategory = "";
+        let searchTitle = "";
+        let hideSearchBar = true;
+        let postIdToDelete = 0; // used by confirmDeleteDlg
+        let selectedCategory = "";
+        let previousScrollPosition = 0;
+
+        init_UI(); //initializes the page
+
+        //sets the head; checks every time if something refreshed
+        HEAD(checkETag, error);
+        setInterval(() => { HEAD(checkETag, error) }, periodicRefreshPeriod * 1000);
+
+        //Keep up to date with ETag; if not up to date, update
+        function checkETag(ETag) {
+            if (!holdCheckETag && ETag != currentETag) {
+                currentETag = ETag;
+                getNewsList();
+            }
+        }
+
+        //Initializes everything and puts it on the web page
+        function init_UI() {
+            //When new button clicked in header, fetch function new news
+            $("#newNewsCmd").click(newNews);
+            //When search button clicked in header, fetch search bar
+            $("#searchCategory").change(() => { selectedCategory = $("#searchCategory").val(); getNewsList(); })
+
+            //When refresh button clicked in header, fetch new News list
+            $(".fa-refresh").click(e => { getNewsList() })
+
+            //Can click on Search Icon; Shows / Hides search bar
+            $(".fa-search").click(e => {
+                hideSearchBar = !hideSearchBar;
+                if (hideSearchBar)
+                    $("#searchBar").hide();
+                else
+                    $("#searchBar").show();
+                getNewsList();
+            })
+
+            //Box id:newsDlg components
+            $("#newsDlg").dialog({
+                //Properties
+                title: "Nouvelle nouvelle",
+                autoOpen: false,
+                modal: true,
+                show: { effect: 'fade', speed: 400 },
+                hide: { effect: 'fade', speed: 400 },
+                width: 400,
+                minWidth: 400,
+                maxWidth: 500,
+                height: 440,
+                minHeight: 440,
+                maxHeight: 440,
+                position: { my: "top", at: "top", of: window },
+
+                buttons:
+                    [
+                        //Add btn
+                        {
+                            id: "newsDlgOkBtn",
+                            text: "Title will be changed dynamically",
+
+                            //on add button click, transfer user data into json file
+                            click: function () {
+                                let news = newsFromForm();
+                                if (news) {
+                                    //Sends data to server
+                                    if (createMode)
+                                        //creates new
+                                        POST(news, getNewsList, error);
+                                    else
+                                        //updates
+                                        PUT(news, getNewsList, error);
+                                    //Puts form back to default
+                                    resetNewsForm();
+
+                                    holdCheckETag = false;
+                                    $(this).dialog("close");
+                                }
+                            }
+                        },
+                        //Cancel btn
+                        {
+                            text: "Annuler",
+                            click: function () {
+                                holdCheckETag = false;
+                                $(this).dialog("close");
+                            }
+                        }
+                    ]
+            });
+
+            //Box id: confirmDeleteDlg components
+            $("#confirmDeleteDlg").dialog({
+                //Properties
+                title: "Attention!",
+                autoOpen: false,
+                modal: true,
+                show: { effect: 'fade', speed: 400 },
+                hide: { effect: 'fade', speed: 400 },
+                width: 500, minWidth: 500, maxWidth: 500,
+                height: 230, minHeight: 230, maxHeight: 230,
+                position: { my: "top", at: "top", of: window },
+
+                //buttons
+                buttons:
+                    [
+                        //Confirm button
+                        {
+                            id: "confirmDeleteDlgOkBtn",
+                            text: "Oui",
+                            //
+                            click: function () {
+                                holdCheckETag = false;
+                                if (postIdToDelete)
+                                    DELETE(postIdToDelete, getNewsList, error);
+                                postIdToDelete = 0;
+                                $(this).dialog("close");
+                            }
+                        },
+                        //Cancel button
+                        {
+                            text: "Annuler",
+                            click: function () {
+                                holdCheckETag = false;
+                                postIdToDelete = 0;
+                                $(this).dialog("close");
+                            }
+                        }
+                    ]
+            });
+
+            //Box id: errorDlg components
+            $("#errorDlg").dialog({
+                //Properties
+                title: "Erreur...",
+                autoOpen: false,
+                modal: true,
+                show: { effect: 'fade', speed: 400 },
+                hide: { effect: 'fade', speed: 400 },
+                width: 500, minWidth: 500, maxWidth: 500,
+                height: 230, minHeight: 230, maxHeight: 230,
+                position: { my: "top", at: "top", of: window },
+                buttons:
+                    [
+                        //Close button
+                        {
+                            text: "Fermer",
+                            //Onclick close
+                            click: function () {
+                                holdCheckETag = false;
+                                postIdToDelete = 0;
+                                $(this).dialog("close");
+                            }
+                        }
+                    ]
+            });
+        }
+
+        //Fetches data and puts it in news list
+        function getNewsList() {
+            //Prepares query to send to server
+            function prepareQueryString() {
+                let queryString = "?sort=Category&sort=Title";
+
+                //if Search bar is shown
+                if (!hideSearchBar) {
+                    //check selected category
+                    selectedCategory = $("#searchCategory").val();
+                    let searchTitle = $("#searchTitle").val();
+
+                    //if category is not null
+                    if (selectedCategory != "")
+                        queryString += "&Category=" + selectedCategory;
+                    //if title is not null
+                    if (searchTitle != "")
+                        queryString += "&Title=*" + searchTitle + "*";
+                }
+                return queryString;
+            }
+            //fetches everything for news list
+            GET_ALL(refreshNewsList, error, prepareQueryString());
+            //fetches everything for category list
+            GET_ALL(refreshCategoryList, error, "?fields=Category");
+        }
+
+        //refreshes category list
+        function refreshCategoryList(categories) {
+            //Resets category list
+            $("#searchCategory").empty();
+            //adds default option
+            $("#searchCategory").append("<option value=''>Toutes les catégories</option>");
+            //adds every option
+            for (let item of categories) {
+                let category = item.Category;
+                let selected = (selectedCategory == category ? " selected " : "");
+                $("#searchCategory").append(`<option value='${category}' ${selected}>${category}</option>`);
+            }
+        }
+
+        //refreshes news list
+        function refreshNewsList(news, ETag) {
+            
+            //Creates new post and inserts it into news List
+            function insertIntoNewsList(post) {
+                //Title / Category 
+                let titElem = $(`<div  class="post-title">${post.Title}</div>`);
+                let catElem = $(`<div class="post-category">${post.Category}</div>`);
+                //Image / text
+                let imgElem = $(`<div class="post-img"><img src=${post.ImgUrl}></div>`);
+                let txtElem = $(`<div class="post-txt">${post.Text}</div>`);
+                //Edit / Delete buttons
+                let editCmd = $(`<div class="cmd editCmd fa fa-pencil-square" newsid="${post.Id}" title="Editer ${post.Title}" data-toggle="tooltip">`);
+                let deleteCmd = $(`<div class="cmd deleteCmd fa fa-window-close" newsid="${post.Id}" title="Effacer ${post.Title}" data-toggle="tooltip">`);
+                let newsRow = $("<div class='postLayout newsRow'>");
+                //Date
+                let dateElem = $(`<div class="post-date">${post.Date}</div>`);
+                
+                //adds every object to our list
+                //category / link
+                newsRow.append(catElem);
+                //edit / delete btns
+                newsRow.append(editCmd);
+                newsRow.append(deleteCmd);
+                //title / img / txt
+                newsRow.append(titElem);
+                newsRow.append(imgElem);
+                newsRow.append(txtElem);
+                //date
+                newsRow.append(dateElem);
+                
+                //adds post to list
+                $("#newsList").append(newsRow);
+            }
+            //transforms previous eTag into most actual one 
+            currentETag = ETag;
+            previousScrollPosition = $(".scrollContainer").scrollTop();
+
+            //resets list
+            $("#newsList").empty();
+            let currentCategory = "";
+
+            //for each post, add it in list
+            for (let post of news) {
+                if (post.Category !== currentCategory)
+                    currentCategory = post.Category;
+                else
+                    post.Category = "";
+                insertIntoNewsList(post);
+            }
+
+            $(".scrollContainer").scrollTop(previousScrollPosition);
+            //if clicked on edit / delete, do sumth
+            $(".editCmd").click(e => { editPost(e) });
+            $(".deleteCmd").click(e => { deletePost(e) });
+
+            $('[data-toggle="tooltip"]').tooltip();
+        }
+
+        function error(status) {
+            let errorMessage = "";
+            switch (status) {
+                case 0:
+                    errorMessage = "Le service ne répond pas";
+                    break;
+                case 400:
+                case 422:
+                    errorMessage = "Requête invalide";
+                    break;
+                case 404:
+                    errorMessage = "Service ou données introuvables";
+                    break;
+                case 409:
+                    errorMessage = "Conflits de données: Hyperlien existe déjà";
+                    break;
+                case 500:
+                    errorMessage = "Erreur interne du service";
+                    break;
+                default: break;
+            }
+            $("#errorMessage").text(errorMessage);
+            $("#errorDlg").dialog('open');
+        }
+
+        function newNews() {
+            holdCheckETag = true;
+            createMode = true;
+            resetNewsForm()
+            $("#newsDlg").dialog('option', 'title', 'Ajout de nouvelle');
+            $("#newsDlgOkBtn").text("Ajouter");
+            $("#newsDlg").dialog('open');
+        }
+
+        //Edits current post
+        function editPost(e) {
+            holdCheckETag = true;
+            createMode = false;
+            
+            //Fetches item's ID
+            GET_ID(e.target.getAttribute("newsid"), postToForm, error);
+            holdCheckETag = true;
+
+            //opens modifier box
+            $("#newsDlg").dialog('option', 'title', 'Modification de nouvelle');
+            $("#newsDlgOkBtn").text("Modifier");
+            $("#newsDlg").dialog('open');
+        }
+
+        //Deletes current post
+        function deletePost(e) {
+            holdCheckETag = true;
+            postIdToDelete = e.target.getAttribute("newsid")
+            GET_ID(
+                postIdToDelete,
+                post => {
+                    $("#confirmationMessage").html("Voulez-vous vraiment effacer la nouvelle? <b>" + post.Title + "</b>?")
+                },
+                error
+            );
+            holdCheckETag = true;
+            $("#confirmDlg").dialog('option', 'title', 'Retrait de nouvelle...');
+            $("#confirmDeleteDlgOkBtn").text("Effacer");
+            $("#confirmDeleteDlg").dialog('open');
+        }
+
+        //resets values
+        function resetNewsForm() {
+            $("#Id_input").val("0");
+            $("#title_input").val("");
+            $("#url_input").val("");
+            $("#text_input").val("");
+            $("#category_input").val("");
+        }
+
+        //Checks if news is elligible; transforms data into suitable data for json
+        function newsFromForm() {
+            if ($("#newsForm")[0].checkValidity()) {
+                let news = { Id: parseInt($("#Id_input").val()), Category: $("#category_input").val(), Title: $("#title_input").val(), Text: $("#text_input").val(), ImgUrl: $("#url_input").val(), Date: convertToFrenchDate(new Date()) };
+                return news;
+            } else {
+                $("#newsForm")[0].reportValidity()
+            }
+            return false;
+        }
+        
+        //Puts post info into dialog box
+        function postToForm(post) {
+            $("#Id_input").val(post.Id);
+            $("#title_input").val(post.Title);
+            $("#category_input").val(post.Category);
+            $("#text_input").val(post.Text);
+            $("#url_input").val(post.ImgUrl);
+        } 
+
+    </script>
+</body>
+
+</html>
