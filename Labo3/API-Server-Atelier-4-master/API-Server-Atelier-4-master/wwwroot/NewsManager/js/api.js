@@ -1,4 +1,5 @@
-const apiBaseURL = "http://localhost:5000/api/news";
+//const apiBaseURL = "http://localhost:5000/api/news";
+const apiBaseURL = "https://guillaumelegareolivierlaliberte-laboratoire3.glitch.me/api/news";
 
 function HEAD(successCallBack, errorCallBack) {
     $.ajax({
